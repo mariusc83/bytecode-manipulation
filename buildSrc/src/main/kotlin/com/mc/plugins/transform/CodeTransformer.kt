@@ -53,42 +53,54 @@ class CodeTransformer(val project: Project, val appExtension: AppExtension) : Tr
                 ensureDirectoryExists(outDir)
                 FileUtils.cleanDirectory(outDir)
                 if (transformInvocation.isIncremental) {
-                    directoryInput.changedFiles.forEach { changedFile ->
-                        println("==Changed file ${changedFile.key.absolutePath}")
-                        when (changedFile.value) {
-                            Status.ADDED, Status.CHANGED -> {
-                                val normalisedPath =
-                                    normalisePath(directoryInput.file, changedFile.key)
+                    directoryInput
+                        .changedFiles
+                        .asSequence()
+                        .filter { it.key.isFile }
+                        .forEach { changedFile ->
 
-                                val newFile = File(outDir, normalisedPath)
-                                ensureDirectoryExists(newFile.parentFile)
-                                println("==File to copy ${changedFile.key.absolutePath}")
-                                println("==Relative file ${normalisedPath}")
-                                changedFile.key.inputStream().use { input ->
-                                    newFile.outputStream().use { output ->
-                                        try {
-                                            if (normalisedPath == "com/mc/codetransformer/myapplication/MainActivity") {
-                                                manipulateBytes(
-                                                    input,
-                                                    output,
-                                                    transformInvocation
-                                                )
-                                                println("Successfully manipulated $normalisedPath")
-                                            } else {
-                                                IOUtils.copy(input, output)
+                            println("==Changed file ${changedFile.key.absolutePath}")
+                            when (changedFile.value) {
+                                Status.ADDED, Status.CHANGED -> {
+                                    val normalisedPath =
+                                        normalisePath(directoryInput.file, changedFile.key)
+
+                                    val newFile = File(outDir, normalisedPath)
+                                    ensureDirectoryExists(newFile.parentFile)
+                                    println("==File to copy ${changedFile.key.absolutePath}")
+                                    println("==Relative file ${normalisedPath}")
+                                    changedFile.key.inputStream().use { input ->
+                                        newFile.outputStream().use { output ->
+                                            try {
+                                                if (normalisedPath == "com/mc/codetransformer/myapplication/MainActivity.class") {
+                                                    manipulateBytes(
+                                                        input,
+                                                        output,
+                                                        transformInvocation
+                                                    )
+                                                    println("Successfully manipulated $normalisedPath")
+                                                } else {
+                                                    IOUtils.copy(input, output)
+                                                }
+
+                                            } catch (e: Exception) {
+                                                println("Error manipulating $normalisedPath")
                                             }
-
-                                        } catch (e: Exception) {
-                                            println("Error manipulating $normalisedPath")
                                         }
                                     }
-                                }
 
-                            }
-                            else -> {
+                                }
+                                Status.REMOVED -> {
+                                    val normalisedPath =
+                                        normalisePath(directoryInput.file, changedFile.key)
+                                    val existingFile = File(outDir, normalisedPath)
+                                    println("==Removing ${changedFile.key.absolutePath}")
+                                    FileUtils.forceDelete(existingFile)
+                                }
+                                else -> {
+                                }
                             }
                         }
-                    }
                 } else {
                     println("  Copying ${directoryInput.file} to $outDir")
                     for (file in FileUtils.iterateFiles(directoryInput.file, null, true)) {
@@ -100,7 +112,7 @@ class CodeTransformer(val project: Project, val appExtension: AppExtension) : Tr
                         IOUtils.buffer(file.inputStream()).use { inputStream ->
                             IOUtils.buffer(destFile.outputStream()).use { outputStream ->
                                 try {
-                                    if (relativeFile == "com/mc/codetransformer/myapplication/MainActivity") {
+                                    if (relativeFile == "com/mc/codetransformer/myapplication/MainActivity.class") {
                                         manipulateBytes(
                                             inputStream,
                                             outputStream,

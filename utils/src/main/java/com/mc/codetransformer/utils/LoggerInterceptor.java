@@ -1,8 +1,8 @@
-package com.mc.codetransformer.myapplication.utils;
+package com.mc.codetransformer.utils;
 
 import android.util.Log;
 
-public class MyLogger {
+public class LoggerInterceptor {
 
     public static void log(String tag, String message) {
         Log.d(tag, message);

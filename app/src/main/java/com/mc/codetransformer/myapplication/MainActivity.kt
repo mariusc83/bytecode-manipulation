@@ -1,12 +1,11 @@
 package com.mc.codetransformer.myapplication
 
 import android.os.Bundle
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
-import com.mc.codetransformer.myapplication.utils.MyLogger
+import com.mc.codetransformer.utils.LoggerInterceptor
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -15,13 +14,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
-
+        LoggerInterceptor.log("MainActivity", "Main activity was initialized")
         fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                 .setAction("Action", null).show()
         }
-        MyLogger.log("MainActivity", "Main activity was initialized")
-        Log.d("MainActivity", "Main activity was initialized")
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

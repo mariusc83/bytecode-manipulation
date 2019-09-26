@@ -82,7 +82,7 @@ class InstrumentationVisitorWrapper(
                 println("==Modifying method: $owner+$name+$desc")
                 super.visitMethodInsn(
                     Opcodes.INVOKESTATIC,
-                    "com/mc/codetransformer/myapplication/utils/MyLogger",
+                    "com/mc/codetransformer/utils/LoggerInterceptor",
                     "log",
                     "(Ljava/lang/String;Ljava/lang/String;)V",
                     false
