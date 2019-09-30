@@ -84,7 +84,7 @@ class InstrumentationVisitorWrapper(
                     Opcodes.INVOKESTATIC,
                     "com/mc/codetransformer/utils/LoggerInterceptor",
                     "log",
-                    "(Ljava/lang/String;Ljava/lang/String;)V",
+                    "(Ljava/lang/String;Ljava/lang/String;)I",
                     false
                 )
 

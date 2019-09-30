@@ -12,7 +12,7 @@ class CodeTransformerPlugin : Plugin<Project> {
             project.extensions.findByName("android") as? AppExtension
         androidExt?.let {
             println("===FoundAndroidExtension===")
-            it.registerTransform(CodeTransformer(project, it))
+            it.registerTransform(CodeTransformer(it))
         }
     }
 }

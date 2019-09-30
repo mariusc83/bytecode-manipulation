@@ -5,17 +5,15 @@ import com.android.build.gradle.AppExtension
 import com.hyperaware.transformer.plugin.asm.ClassInstrumenter
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
-import org.gradle.api.Project
-import org.gradle.api.logging.Logging
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
+import java.util.*
 
-class CodeTransformer(val project: Project, val appExtension: AppExtension) : Transform() {
+class CodeTransformer(val appExtension: AppExtension) : Transform() {
 
-    val logger = Logging.getLogger(CodeTransformer::class.java)
     override fun getName(): String {
         return CodeTransformer::class.java.simpleName
     }
@@ -33,13 +31,10 @@ class CodeTransformer(val project: Project, val appExtension: AppExtension) : Tr
     }
 
     override fun transform(transformInvocation: TransformInvocation) {
-        logger.debug("==Starting the Transform==")
         println("==Starting the Transform==")
         transformInvocation.inputs.forEach {
-            logger.debug("==Transformation Input ${it}")
             println("==Transformation Input ${it}")
             it.directoryInputs.forEach { directoryInput ->
-                logger.debug("==Directory Input ${directoryInput.file.absolutePath}")
                 println("==Directory Input ${directoryInput.file}")
                 val outDir = transformInvocation
                     .outputProvider
@@ -58,36 +53,13 @@ class CodeTransformer(val project: Project, val appExtension: AppExtension) : Tr
                         .asSequence()
                         .filter { it.key.isFile }
                         .forEach { changedFile ->
-
-                            println("==Changed file ${changedFile.key.absolutePath}")
                             when (changedFile.value) {
                                 Status.ADDED, Status.CHANGED -> {
-                                    val normalisedPath =
-                                        normalisePath(directoryInput.file, changedFile.key)
-
-                                    val newFile = File(outDir, normalisedPath)
-                                    ensureDirectoryExists(newFile.parentFile)
-                                    println("==File to copy ${changedFile.key.absolutePath}")
-                                    println("==Relative file ${normalisedPath}")
-                                    changedFile.key.inputStream().use { input ->
-                                        newFile.outputStream().use { output ->
-                                            try {
-                                                if (normalisedPath == "com/mc/codetransformer/myapplication/MainActivity.class") {
-                                                    manipulateBytes(
-                                                        input,
-                                                        output,
-                                                        transformInvocation
-                                                    )
-                                                    println("Successfully manipulated $normalisedPath")
-                                                } else {
-                                                    IOUtils.copy(input, output)
-                                                }
-
-                                            } catch (e: Exception) {
-                                                println("Error manipulating $normalisedPath")
-                                            }
-                                        }
-                                    }
+                                    directoryInput.transform(
+                                        outDir,
+                                        changedFile.key,
+                                        transformInvocation
+                                    )
 
                                 }
                                 Status.REMOVED -> {
@@ -102,33 +74,12 @@ class CodeTransformer(val project: Project, val appExtension: AppExtension) : Tr
                             }
                         }
                 } else {
-                    println("  Copying ${directoryInput.file} to $outDir")
-                    for (file in FileUtils.iterateFiles(directoryInput.file, null, true)) {
-                        val relativeFile = normalisePath(directoryInput.file, file)
-                        println("==File to copy ${file.absolutePath}")
-                        println("==Relative file ${relativeFile}")
-                        val destFile = File(outDir, relativeFile)
-                        ensureDirectoryExists(destFile.parentFile)
-                        IOUtils.buffer(file.inputStream()).use { inputStream ->
-                            IOUtils.buffer(destFile.outputStream()).use { outputStream ->
-                                try {
-                                    if (relativeFile == "com/mc/codetransformer/myapplication/MainActivity.class") {
-                                        manipulateBytes(
-                                            inputStream,
-                                            outputStream,
-                                            transformInvocation
-                                        )
-                                        println("Successfully manipulated $relativeFile")
-
-                                    } else {
-                                        IOUtils.copy(inputStream, outputStream)
-                                    }
-
-                                } catch (e: Exception) {
-                                    println("Error manipulating $relativeFile")
-                                }
-                            }
-                        }
+                    directoryInput.file.files().forEach {
+                        directoryInput.transform(
+                            outDir,
+                            it,
+                            transformInvocation
+                        )
                     }
                 }
 
@@ -137,6 +88,63 @@ class CodeTransformer(val project: Project, val appExtension: AppExtension) : Tr
         }
     }
 
+
+    private fun File.files(): List<File> {
+        val mutableList: MutableList<File> = mutableListOf()
+        if (this.isDirectory) {
+            val queue: LinkedList<File> = LinkedList()
+            queue.add(this)
+            while (queue.isNotEmpty()) {
+                val dir = queue.poll()
+                dir.listFiles().forEach {
+                    if (it.isDirectory) {
+                        queue.add(it)
+                    } else {
+                        mutableList.add(it)
+                    }
+                }
+            }
+        } else {
+            mutableList.add(this)
+        }
+
+        return mutableList
+    }
+
+    private fun DirectoryInput.transform(
+        outDir: File,
+        file: File,
+        transformInvocation: TransformInvocation
+    ) {
+        val normalisedPath =
+            normalisePath(this.file, file)
+        val newFile = File(outDir, normalisedPath)
+        ensureDirectoryExists(newFile.parentFile)
+        println("==File to copy ${file.absolutePath}")
+        println("==Relative file ${normalisedPath}")
+        println("==New file ${newFile.absolutePath}")
+
+        IOUtils.buffer(file.inputStream()).use { inputStream ->
+            IOUtils.buffer(newFile.outputStream()).use { outputStream ->
+                try {
+                    if (normalisedPath == "com/mc/codetransformer/myapplication/MainActivity.class") {
+                        manipulateBytes(
+                            inputStream,
+                            outputStream,
+                            transformInvocation
+                        )
+                        println("Successfully manipulated $normalisedPath")
+
+                    } else {
+                        IOUtils.copy(inputStream, outputStream)
+                    }
+
+                } catch (e: Throwable) {
+                    println("Error manipulating $normalisedPath")
+                }
+            }
+        }
+    }
 
     private fun normalisePath(parent: File, child: File): String {
         var path = ""

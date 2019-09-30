@@ -4,7 +4,8 @@ import android.util.Log;
 
 public class LoggerInterceptor {
 
-    public static void log(String tag, String message) {
+    public static int log(String tag, String message) {
         Log.d(tag, message);
+        return Integer.MAX_VALUE;
     }
 }
