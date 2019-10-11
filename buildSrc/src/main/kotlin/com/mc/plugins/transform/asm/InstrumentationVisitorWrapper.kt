@@ -17,33 +17,20 @@
 package com.hyperaware.transformer.plugin.asm
 
 import org.gradle.api.logging.Logging
-import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes
+import org.objectweb.asm.*
 import org.objectweb.asm.commons.AdviceAdapter
 
 class InstrumentationVisitorWrapper(
     private val classVisitor: ClassVisitor
 ) : ClassVisitor(ASM_API_VERSION, classVisitor) {
 
+    private var wasFieldAdded = false
+
     companion object {
         private const val ASM_API_VERSION = Opcodes.ASM7
     }
 
     private val logger = Logging.getLogger(InstrumentationVisitorWrapper::class.java)
-
-    override fun visit(
-        version: Int,
-        access: Int,
-        className: String,
-        signature: String?,
-        superName: String,
-        interfaces: Array<String>?
-    ) {
-        // The only thing we're doing here is logging that we visited this class.
-        //
-        super.visit(version, access, className, signature, superName, interfaces)
-    }
 
     override fun visitMethod(
         access: Int,                 // public / private / final / etc
@@ -56,6 +43,42 @@ class InstrumentationVisitorWrapper(
         val mv = super.visitMethod(access, methodName, methodDesc, signature, exceptions)
         // Wrap it in a custom MethodVisitor
         return MethodVisitorWrapper(ASM_API_VERSION, mv, access, methodName, methodDesc)
+    }
+
+    override fun visitEnd() {
+
+        if (!wasFieldAdded) {
+            val visitField =
+                visitField(
+                    Opcodes.ACC_PUBLIC,
+                    "mTestField",
+                    "Ljava/util/HashMap<java.lang.String,java.lang.String>;",
+                    null,
+                    null
+                )
+            visitField.visitEnd()
+            wasFieldAdded = true
+        } else {
+            super.visitEnd()
+        }
+
+    }
+
+    override fun visitField(
+        access: Int,
+        name: String?,
+        descriptor: String?,
+        signature: String?,
+        value: Any?
+    ): FieldVisitor {
+        println(
+            """Visiting field: ${name}
+            |with desc: $descriptor
+            |with signature $signature
+            |with value $value
+        """.trimMargin()
+        )
+        return super.visitField(access, name, descriptor, signature, value)
     }
 
 
@@ -92,6 +115,11 @@ class InstrumentationVisitorWrapper(
                 super.visitMethodInsn(opcode, owner, name, desc, itf)
             }
         }
+
+        override fun visitJumpInsn(opcode: Int, label: Label?) {
+            super.visitJumpInsn(opcode, label)
+        }
+
     }
 
 }

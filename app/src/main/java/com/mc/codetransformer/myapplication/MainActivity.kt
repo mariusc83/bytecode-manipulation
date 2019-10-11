@@ -11,8 +11,12 @@ import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
 
+    val mMap = HashMap<String, String>()
+    lateinit var mMap2: HashMap<String, String>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        mMap2 = HashMap()
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
         Log.d("MainActivity", "Main activity was initialized")
